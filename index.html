@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anthony's Dashboard</title>
+<style>
+  :root { --ink:#1c2733; --mut:#5b6b7a; --card:#ffffff; --bg:#eef2f5; --line:#d9e1e8; --accent:#2e6f9e; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--bg); color:var(--ink); }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+  header.top { display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+  h1 { font-size: 24px; margin:0; }
+  .fresh { color:var(--mut); font-size: 13px; }
+  .fresh b { color: var(--ink); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px 20px; margin-bottom:16px; box-shadow: 0 1px 2px rgba(20,40,60,.05); }
+  .card h2 { margin:0 0 4px; font-size:17px; }
+  .card h3 { margin:14px 0 6px; font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--mut); }
+  .sub { color:var(--mut); font-size:13px; margin:0 0 10px; }
+  /* mood bar */
+  .bar { position:relative; height:16px; border-radius:8px; margin:26px 4px 8px;
+    background: linear-gradient(90deg,#9aa3ab 0%,#7e57c2 18%,#3f7fbf 36%,#43a06a 54%,#e3c93f 72%,#e08a3c 86%,#d9534f 100%); }
+  .marker { position:absolute; top:50%; transform:translate(-50%,-50%); }
+  .marker.set { width:18px; height:18px; border-radius:50%; background:#fff; border:3px solid #22303c; z-index:2; }
+  .marker.read { width:14px; height:14px; border-radius:50%; background:transparent; border:3px dashed #22303c; }
+  .marker .tag { position:absolute; left:50%; transform:translateX(-50%); white-space:nowrap; font-size:11px; color:var(--mut); }
+  .marker.set .tag { top:-24px; color:var(--ink); font-weight:600; }
+  .marker.read .tag { top:16px; }
+  .scale { display:flex; justify-content:space-between; font-size:11px; color:var(--mut); margin:18px 4px 0; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .chip { background:#eef4f8; border:1px solid var(--line); border-radius:999px; padding:3px 10px; font-size:12px; }
+  ul.factors { margin:6px 0 0; padding-left:18px; }
+  ul.factors li { margin:4px 0; font-size:14px; }
+  .readsum { font-size:15px; font-weight:600; margin:2px 0; }
+  .ground { font-size:12px; color:var(--mut); border-top:1px dashed var(--line); margin-top:12px; padding-top:10px; }
+  /* workflow grid */
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; }
+  .wf .status { display:inline-block; font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
+    padding:2px 8px; border-radius:999px; background:#e8f3ec; color:#256b41; border:1px solid #cfe5d6; }
+  .wf .status.paused { background:#f3efe6; color:#7a6414; border-color:#e6dcbb; }
+  .wf p { font-size:14px; margin:8px 0; }
+  .wf ul { margin:6px 0 0; padding-left:18px; font-size:13px; }
+  .wf li { margin:3px 0; }
+  .meals li, .parked li { font-size:14px; margin:4px 0; }
+  .bunzy { display:flex; gap:14px; align-items:center; }
+  .bunzy .face { font-size:42px; }
+  footer { color:var(--mut); font-size:12px; text-align:center; margin-top:8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>Anthony's Dashboard</h1>
+    <div class="fresh" id="fresh">Loading…</div>
+  </header>
+
+  <section class="card" id="mood-card">
+    <h2>Mood ring</h2>
+    <p class="sub" id="set-note"></p>
+    <div class="bar" id="bar">
+      <div class="marker set" id="m-set"><span class="tag">Anthony's set mood</span></div>
+      <div class="marker read" id="m-read"><span class="tag">Muse's latest interpretation</span></div>
+    </div>
+    <div class="scale"><span>Grey</span><span>Purple</span><span>Blue</span><span>Green</span><span>Yellow</span><span>Orange</span><span>Red</span></div>
+    <div class="chips" id="chips"></div>
+    <h3>Muse's latest interpretation</h3>
+    <p class="readsum" id="read-sum"></p>
+    <p class="sub" id="read-meta"></p>
+    <h3>Weighing on this read</h3>
+    <ul class="factors" id="factors"></ul>
+    <p class="ground">Override: say it in chat, or set the mood in Muse. Anthony's stated mood is ground truth — corrections calibrate Muse's reads over time.</p>
+  </section>
+
+  <section class="grid" id="workflows"></section>
+
+  <section class="card">
+    <h2>Parked for later</h2>
+    <ul class="parked" id="parked"></ul>
+  </section>
+
+  <section class="card">
+    <h2>Meals</h2>
+    <div id="meals"></div>
+  </section>
+
+  <section class="card">
+    <div class="bunzy">
+      <div class="face">🐰</div>
+      <div>
+        <h2 id="bunzy-title" style="margin-bottom:2px;">Bunzy</h2>
+        <p class="sub" id="bunzy-sub" style="margin-bottom:4px;"></p>
+        <p style="margin:0;font-size:14px;" id="bunzy-text"></p>
+      </div>
+    </div>
+  </section>
+
+  <footer>Hosted on GitHub Pages · Data committed by Muse from fulcrum-data records · Anthony's self-reports are ground truth</footer>
+</div>
+
+<script>
+function fmtTime(iso) {
+  const d = new Date(iso);
+  return d.toLocaleString('en-CA', { weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
+}
+function ageText(iso) {
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (mins < 1) return 'just now';
+  if (mins < 60) return mins + ' min old';
+  const h = Math.floor(mins / 60), m = mins % 60;
+  if (h < 24) return h + 'h ' + m + 'm old';
+  return Math.floor(h / 24) + 'd old';
+}
+let DATA = null;
+function renderFresh() {
+  if (!DATA) return;
+  document.getElementById('fresh').innerHTML =
+    'Data as of <b>' + fmtTime(DATA.generated_at) + '</b> · ' + ageText(DATA.generated_at) +
+    ' · Interpretation read ' + ageText(DATA.interpretation.read_at);
+}
+async function load() {
+  const r = await fetch('board.json', { cache: 'no-store' });
+  DATA = await r.json();
+  const sm = DATA.set_mood, rd = DATA.interpretation;
+  document.getElementById('m-set').style.left = sm.position_pct + '%';
+  document.getElementById('m-read').style.left = rd.position_pct + '%';
+  document.getElementById('set-note').textContent =
+    'Right now — ' + sm.label + ' (' + sm.position_pct + '%), set ' + fmtTime(sm.set_at) + ' · “' + sm.note + '”';
+  document.getElementById('chips').innerHTML =
+    sm.chips.map(c => '<span class="chip">' + c.name + ' ' + c.value + '/10</span>').join('');
+  document.getElementById('read-sum').textContent = rd.summary;
+  document.getElementById('read-meta').textContent =
+    'Read taken ' + fmtTime(rd.read_at) + ' · position ' + rd.position_pct + '%';
+  document.getElementById('factors').innerHTML = rd.factors.map(f => '<li>' + f + '</li>').join('');
+  document.getElementById('workflows').innerHTML = DATA.workflows.map(w =>
+    '<article class="card wf"><h2>' + w.id + ' — ' + w.name + '</h2>' +
+    '<span class="status' + (w.status.indexOf('Paused') === 0 ? ' paused' : '') + '">' + w.status + '</span>' +
+    '<p>' + w.detail + '</p>' +
+    (w.milestones ? '<h3>Latest milestones</h3><ul>' + w.milestones.map(m => '<li>' + m + '</li>').join('') + '</ul>' : '') +
+    '</article>').join('');
+  document.getElementById('parked').innerHTML = DATA.parked.map(p => '<li>' + p + '</li>').join('');
+  document.getElementById('meals').innerHTML = DATA.meals.map(d =>
+    '<h3>' + d.label + '</h3><ul class="meals">' + d.items.map(i => '<li>' + i + '</li>').join('') + '</ul>').join('');
+  document.getElementById('bunzy-title').textContent = DATA.bunzy.title;
+  document.getElementById('bunzy-sub').textContent = DATA.bunzy.subtitle;
+  document.getElementById('bunzy-text').textContent = DATA.bunzy.text;
+  renderFresh();
+}
+load();
+setInterval(renderFresh, 60000);
+</script>
+</body>
+</html>
